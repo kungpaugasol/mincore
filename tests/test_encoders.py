@@ -4,6 +4,7 @@ import math
 from mincore.encoders import encode_varint, decode_varint
 from mincore.encoders import encode_dod, decode_dod
 from mincore.encoders import encode_gorilla, decode_gorilla
+from mincore.encoders import encode_dict, decode_dict
 
 def test_varint_roundtrip_small():
     values = [0, 1, -1, 2, -2, 127, 128, -128, -129]
@@ -121,3 +122,34 @@ def test_gorilla_on_real_btcusdt():
     per_value = len(enc) / len(closes)
     # empirically ~5.9 bytes/value on this data; assert a range
     assert 4.0 < per_value < 7.0, f"gorilla per-value {per_value:.2f} outside expected range"
+
+def test_dict_roundtrip_single_symbol():
+    values = ["BTCUSDT"] * 1000
+    enc = encode_dict(values)
+    assert decode_dict(enc, len(values)) == values
+    # vocab table holds the string ONCE (13 bytes header + 1 varint code per value)
+    # so the total is ~1013 bytes, not 7000. Assert the real property: the
+    # dictionary eliminates repeated string storage, not that varint codes vanish.
+    raw = sum(len(s) for s in values)
+    assert len(enc) < raw // 4, f"dict used {len(enc)} bytes vs {raw} bytes raw"
+    # and specifically: string appears once
+    assert enc.count(b"BTCUSDT") == 1
+
+
+def test_dict_roundtrip_two_symbols():
+    values = ["BTCUSDT", "ETHUSDT"] * 500
+    assert decode_dict(encode_dict(values), len(values)) == values
+
+
+def test_dict_roundtrip_many_symbols():
+    values = [f"SYM{i:04d}" for i in range(500)] * 10
+    assert decode_dict(encode_dict(values), len(values)) == values
+
+
+def test_dict_empty():
+    assert decode_dict(encode_dict([]), 0) == []
+
+
+def test_dict_unicode():
+    values = ["α", "β", "γ", "α", "β", "γ"]
+    assert decode_dict(encode_dict(values), len(values)) == values
