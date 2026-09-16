@@ -1,3 +1,23 @@
+"""
+bitio.py — the only place raw bit twiddling lives.
+
+Contract:
+  - BitWriter buffers partial bytes. flush() pads the trailing byte with
+    zero bits on the right.
+  - BitWriter.write_bytes() auto-flushes before appending, so byte writes
+    always land on byte boundaries.
+  - BitReader.read_bits(n) may leave the reader mid-byte; partial bits sit
+    in an internal accumulator.
+  - BitReader.read_bytes(n) discards any partial bits, snapping to the next
+    byte boundary. Symmetric with BitWriter.write_bytes()'s auto-flush.
+  - BitReader raises EOFError only when the underlying byte buffer is
+    exhausted — not when the padding bits within the last byte are consumed.
+    Decoders must use an explicit count (for example: row_count from the container
+    header) to know when to stop; padding bits are not distinguishable from
+    real bits at this layer.
+"""
+
+
 class BitWriter:
     def __init__(self):
         self._buf = bytearray()

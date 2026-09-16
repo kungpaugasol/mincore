@@ -1,21 +1,27 @@
 # uv / venv
 .venv/
+uv.lock
+
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
 dist/
 build/
 
-# project outputs
-*.minc
+# Project-specific
+*.minc          # don't commit container outputs
 /tmp/
-
-# datasets (fetch, don't commit)
 bench/datasets/*.csv
 bench/datasets/*.parquet
 
-# IDE / OS
+# IDE
 .vscode/
 .idea/
 *.swp
+
+# OS
 .DS_Store
+
+bench/datasets/*.csv
+bench/datasets/*.zip
