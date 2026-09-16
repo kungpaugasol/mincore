@@ -1,0 +1,21 @@
+# uv / venv
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# project outputs
+*.minc
+/tmp/
+
+# datasets (fetch, don't commit)
+bench/datasets/*.csv
+bench/datasets/*.parquet
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

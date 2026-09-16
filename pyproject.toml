@@ -1,0 +1,31 @@
+[project]
+name = "mincore"
+version = "0.0.1"
+description = "Minimal columnar compression codec for time-series data"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[project.urls]
+repository = "https://github.com/kungpaugasol/mincore"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+bench = [
+    "pyarrow",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = ["--maxfail=1", "-q"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
