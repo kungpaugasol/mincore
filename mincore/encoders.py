@@ -1,4 +1,4 @@
-"""encoders.py — pure function pairs: encode(values) -> bytes, decode(bytes, count) -> values.
+"""encoders.py pure function pairs: encode(values) -> bytes, decode(bytes, count) -> values.
 
 Every encoder in this module follows the same contract:
   - encode takes a list of values (int, float, or str)
@@ -13,12 +13,12 @@ knows about any other encoder. No encoder knows about the container format.
 from __future__ import annotations
 
 import struct
-
+import math
 from mincore.bitio import BitReader, BitWriter
 
 
 # ---------------------------------------------------------------------------
-# varint — LEB128 with zigzag. The fallback for any integer column.
+# varint LEB128 with zigzag. The fallback for any integer column.
 # ---------------------------------------------------------------------------
 
 def encode_varint(values: list[int]) -> bytes:
@@ -55,7 +55,7 @@ def decode_varint(data: bytes, count: int) -> list[int]:
     return out
 
 # ---------------------------------------------------------------------------
-# delta-of-delta — for evenly-spaced integer sequences (timestamps, counters).
+# delta-of-delta for evenly-spaced integer sequences (timestamps, counters).
 # ---------------------------------------------------------------------------
 
 def encode_dod(values: list[int]) -> bytes:
@@ -109,7 +109,7 @@ def decode_dod(data: bytes, count: int) -> list[int]:
     return ts
 
 # ---------------------------------------------------------------------------
-# gorilla XOR — for slowly-changing float sequences.
+# gorilla XOR for slowly-changing float sequences.
 # Based on the Facebook Gorilla TSDB paper. Exploits the fact that
 # consecutive floats in a series share exponent and high mantissa bits.
 # ---------------------------------------------------------------------------
@@ -193,7 +193,7 @@ def decode_gorilla(data: bytes, count: int) -> list[float]:
     return out
 
 # ---------------------------------------------------------------------------
-# dictionary — for low-cardinality string columns (symbols, exchanges, etc.)
+# dictionary for low cardinality string columns (symbols, exchanges, etc.)
 # ---------------------------------------------------------------------------
 
 def encode_dict(values: list[str]) -> bytes:
@@ -226,3 +226,33 @@ def decode_dict(data: bytes, count: int) -> list[str]:
         pos += l
     codes = decode_varint(data[pos:], count)
     return [vocab[c] for c in codes]
+
+def _is_int_col(values) -> bool:
+    return all(isinstance(v, int) and not isinstance(v, bool) for v in values[:64])
+
+
+def _is_float_col(values) -> bool:
+    n = len(values[:64])
+    if n == 0:
+        return True
+    return all(isinstance(v, (int, float)) and not isinstance(v, bool)
+               for v in values[:64])
+
+
+def _is_str_col(values) -> bool:
+    return all(isinstance(v, str) for v in values[:64])
+
+
+# name: (encode_fn, decode_fn, applicability_check)
+REGISTRY: dict[str, tuple] = {
+    "dod":     (encode_dod,     decode_dod,     _is_int_col),
+    "gorilla": (encode_gorilla, decode_gorilla, _is_float_col),
+    "dict":    (encode_dict,    decode_dict,    _is_str_col),
+    "varint":  (encode_varint,  decode_varint,  lambda vs: True),  # universal fallback
+}
+
+# Canonical ordering index into this list is what gets stored as enc_tag
+# in the container header.
+ENC_NAMES: list[str] = ["dod", "gorilla", "dict", "varint"]
+
+assert set(ENC_NAMES) == set(REGISTRY.keys()), "ENC_NAMES and REGISTRY out of sync"
